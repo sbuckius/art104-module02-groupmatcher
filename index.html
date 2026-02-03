@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Ranked Group Matcher</title>
+<title>Ranked Group Matcher (Live)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Export Libraries -->
@@ -69,7 +69,7 @@ body{
 
 <div class="container">
 
-<h1>Ranked Preference Matcher</h1>
+<h1>Ranked Preference Matcher (Live)</h1>
 
 <label><strong>Avatar Name:</strong></label><br>
 <input type="text" id="avatarName" style="width:100%;padding:8px;"><br>
@@ -108,7 +108,7 @@ body{
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } 
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* 🔥 INSERT YOUR FIREBASE CONFIG */
@@ -229,21 +229,20 @@ return;
 }
 
 await addDoc(collection(db,"users"),{name,answers});
-loadUsers();
+// No need to call loadUsers() here; onSnapshot will auto-update
 }
 
-/* LOAD USERS */
-async function loadUsers(){
-const snapshot=await getDocs(collection(db,"users"));
+/* LIVE LISTENER */
+const usersCollection = collection(db,"users");
+onSnapshot(usersCollection,(snapshot)=>{
 let users=[];
 snapshot.forEach(doc=>{
 users.push({id:doc.id,...doc.data()});
 });
-
 displaySubmissionStatus(users);
 displayUsers(users);
 displayGroups(users);
-}
+});
 
 /* DISPLAY SUBMISSIONS */
 function displaySubmissionStatus(users){
@@ -340,12 +339,9 @@ snapshot.forEach(async d=>{
 await deleteDoc(doc(db,"users",d.id));
 });
 alert("All data reset.");
-loadUsers();
 };
 
 buildUI();
-loadUsers();
-window.submitAnswers=submitAnswers;
 
 </script>
 </body>
