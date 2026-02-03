@@ -156,8 +156,19 @@ async function submitAnswers(){
 
   if(!valid){ alert("Each question needs 3 ranked choices."); return; }
 
+  // Convert to plain objects for Firestore
+  const cleanAnswers = answers.map(questionRanks => 
+    questionRanks.map(item => ({
+      option: String(item.option),
+      rank: Number(item.rank)
+    }))
+  );
+
   try{
-    await addDoc(collection(db,"users"), { name, answers });
+    await addDoc(collection(db,"users"), { 
+      name: String(name), 
+      answers: cleanAnswers
+    });
     alert("Submission successful!");
     document.getElementById("avatarName").value="";
     document.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=false);
