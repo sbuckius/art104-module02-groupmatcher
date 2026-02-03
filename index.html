@@ -73,10 +73,86 @@ const ADMIN_PASSWORD = "admin123";
 
 // Questions array
 const questions = [
-  { title:"Rank Top 3 Interests", options:["Art","Music","Coding","Robotics","Design","Gaming","AI","Writing","Science","History","Math","Nature"], weight:25 },
-  { title:"Rank Top 3 Work Styles", options:["Collaborative","Independent","Experimental","Structured","Leadership","Support","Fast","Slow","Analytical"], weight:25 },
-  { title:"Rank Top 3 Themes", options:["Future","Past","Identity","Environment","Technology","Dreams","Data","Myth","Machines","Space"], weight:25 },
-  { title:"Rank Top 3 Goals (Group by Differences)", options:["Art Project","Teamwork","Learning Coding","Experimenting","Leadership","Design","AI Work","Nature Project"], weight:25 }
+  { 
+    title:"For Module 02: Human/Identity/Self/Body, which technologies are you most interested in? Select 3 and rank them.", 
+    options:[
+      "Robots and/or nanobots",
+      "AI images of humans",
+      "Chatbots",
+      "Social media technologies to represent humans",
+      "Selfies & self-portraits—digital photography",
+      "Avatars",
+      "Cyborgs-neural link and ilimb and bionic eye",
+      "Wearable computing and wearable robotics and exoskeleton",
+      "Digital selves and data selves and digital identity",
+      "Deepfakes",
+      "Video game representations of humans/characters",
+      "Animated representations of humans/characters",
+      "Other"
+    ], 
+    weight:25 
+  },
+  { 
+    title:"For Module 02: Human/Identity/Self/Body, which themes/topics are you most interested in? Select 3 and rank them.", 
+    options:[
+      "Digital Identities",
+      "Post-humanism",
+      "Gender",
+      "Human consciousness/sentience",
+      "Body/brain interface",
+      "Human body disembodied with technology",
+      "Self representation",
+      "Digital humanism",
+      "Race",
+      "Xenofeminism",
+      "Mental Health",
+      "Data Bodies",
+      "Other"
+    ], 
+    weight:25 
+  },
+  { 
+    title:"What are your favorite creative mediums to work in yourself? Select 3 and rank them.", 
+    options:[
+      "Video games",
+      "Coding",
+      "Digital Illustration",
+      "Analog Illustration",
+      "3D rendering",
+      "Animation",
+      "Video",
+      "Sound",
+      "Net-based Artwork",
+      "Graphic Design",
+      "Industrial Design",
+      "Film",
+      "Drawing",
+      "Painting",
+      "Sculpture",
+      "Sensors and physical computing",
+      "Other"
+    ], 
+    weight:25 
+  },
+  { 
+    title:"Which activities would you prefer to do in a group? Select 3 and rank them.", 
+    options:[
+      "Digital drawing",
+      "3D rendering",
+      "Writing",
+      "Research",
+      "Presentations",
+      "Graphic Design Creation with text and image",
+      "Summary of articles",
+      "Brainstorming",
+      "Leadership & Organizing & Communication",
+      "Combining Ideas",
+      "Coding",
+      "Hand-drawn Sketches",
+      "Other"
+    ], 
+    weight:25 
+  }
 ];
 
 // Build UI
@@ -89,10 +165,12 @@ function buildUI(){
     const grid = document.createElement("div");
     grid.className="checkbox-grid";
     q.options.forEach(opt=>{
+      const isOther = opt === "Other";
       grid.innerHTML+=`
 <label class="option-row">
-<input type="checkbox" name="q${index}" value="${opt}">
+<input type="checkbox" name="q${index}" value="${opt}" data-question="${index}" data-option="${opt}">
 ${opt}
+${isOther ? `<input type="text" name="otherText${index}" placeholder="Please specify..." style="margin-left:8px;padding:4px;display:none;">` : ''}
 <select disabled name="rank${index}">
 <option value="">Rank</option>
 <option value="1">1</option>
@@ -112,9 +190,18 @@ function setupRanking(index){
   const checks = document.querySelectorAll(`input[name="q${index}"]`);
   checks.forEach(cb=>{
     const select=cb.parentElement.querySelector("select");
+    const otherInput=cb.parentElement.querySelector(`input[name="otherText${index}"]`);
+    
     cb.addEventListener("change", ()=>{
       select.disabled=!cb.checked;
       if(!cb.checked) select.value="";
+      
+      // Show/hide "Other" text input
+      if(otherInput){
+        otherInput.style.display = cb.checked ? 'inline-block' : 'none';
+        if(!cb.checked) otherInput.value = '';
+      }
+      
       enforceUnique(index);
     });
     select.addEventListener("change", ()=>enforceUnique(index));
@@ -146,7 +233,21 @@ async function submitAnswers(){
     document.querySelectorAll(`input[name="q${index}"]`).forEach(cb=>{
       const sel = cb.parentElement.querySelector("select");
       if(cb.checked && sel.value){
-        ranked.push({option:cb.value,rank:parseInt(sel.value)});
+        let optionValue = cb.value;
+        
+        // If "Other" is selected, get the custom text
+        if(optionValue === "Other"){
+          const otherInput = cb.parentElement.querySelector(`input[name="otherText${index}"]`);
+          if(otherInput && otherInput.value.trim()){
+            optionValue = "Other: " + otherInput.value.trim();
+          } else {
+            alert("Please specify what you mean by 'Other' in question " + (index + 1));
+            valid = false;
+            return;
+          }
+        }
+        
+        ranked.push({option:optionValue,rank:parseInt(sel.value)});
       }
     });
     if(ranked.length!==3) valid=false;
@@ -172,6 +273,10 @@ async function submitAnswers(){
     alert("Submission successful!");
     document.getElementById("avatarName").value="";
     document.querySelectorAll('input[type="checkbox"]').forEach(cb=>cb.checked=false);
+    document.querySelectorAll('input[type="text"]').forEach(input=>{
+      input.value="";
+      input.style.display="none";
+    });
     document.querySelectorAll('select').forEach(sel=>{
       sel.value="";
       sel.disabled=true;
