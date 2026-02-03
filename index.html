@@ -1,25 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Ranked Preference Group Matcher</title>
+<title>Ranked Group Matcher</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<!-- Firebase (Module Version) -->
+<style>
+body{
+  font-family:Arial, sans-serif;
+  background:#f4f6f9;
+  padding:20px;
+}
+.container{
+  max-width:1000px;
+  margin:auto;
+  background:white;
+  padding:25px;
+  border-radius:10px;
+  box-shadow:0 5px 20px rgba(0,0,0,.1);
+}
+.checkbox-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+  gap:6px;
+}
+.option-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+}
+.section{
+  margin-top:30px;
+}
+.group-box{
+  background:#eef2ff;
+  padding:15px;
+  margin:15px 0;
+  border-radius:8px;
+}
+.user-box{
+  background:#f0fdf4;
+  padding:12px;
+  margin:12px 0;
+  border-radius:8px;
+}
+button{
+  margin-top:20px;
+  padding:10px 20px;
+  border:none;
+  border-radius:6px;
+  background:#2563eb;
+  color:white;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Ranked Preference Matcher</h1>
+
+<label><strong>Avatar Name:</strong></label><br>
+<input type="text" id="avatarName" style="width:100%;padding:8px;"><br>
+
+<div id="questions"></div>
+
+<button onclick="submitAnswers()">Submit</button>
+
+<hr>
+
+<h2>Your Submitted Answers</h2>
+<div id="personalOutput"></div>
+
+<hr>
+
+<h2>All Participants</h2>
+<div id="allUsers"></div>
+
+<hr>
+
+<h2>Generated Groups</h2>
+<div id="groupOutput"></div>
+
+</div>
+
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /* 🔥 REPLACE WITH YOUR FIREBASE CONFIG */
 const firebaseConfig = {
-  apiKey: "AIzaSyDG_zmeJfITZ1EFyLk3iOb74pqU8VadQQs",
-  authDomain: "art104module02groupsetup.firebaseapp.com",
-  databaseURL: "https://art104module02groupsetup-default-rtdb.firebaseio.com",
-  projectId: "art104module02groupsetup",
-  storageBucket: "art104module02groupsetup.firebasestorage.app",
-  messagingSenderId: "558666089511",
-  appId: "1:558666089511:web:646e0cb76ad04952e53a02",
-  measurementId: "G-1PVD2SG6RN"
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -28,29 +104,28 @@ const db = getFirestore(app);
 /* QUESTIONS */
 const questionsData = [
 {
-title: "Question 1: Rank Your Top 3 Interests",
-options: ["Art","Music","Coding","Robotics","Design","Gaming","AI","Writing","Science","History","Math","Nature","Film","Architecture","Fashion"]
+title:"Rank Your Top 3 Interests",
+options:["Art","Music","Coding","Robotics","Design","Gaming","AI","Writing","Science","History","Math","Nature","Film","Architecture","Fashion"]
 },
 {
-title: "Question 2: Rank Your Top 3 Work Styles",
-options: ["Hands-on","Research","Sketching","Digital","Physical","Collaborative","Independent","Experimental","Structured","Improvisational","Leadership","Support Role","Fast-paced","Slow-paced","Analytical"]
+title:"Rank Your Top 3 Work Styles",
+options:["Hands-on","Research","Sketching","Digital","Physical","Collaborative","Independent","Experimental","Structured","Improvisational","Leadership","Support Role","Fast-paced","Slow-paced","Analytical"]
 },
 {
-title: "Question 3: Rank Your Top 3 Themes",
-options: ["Future","Past","Identity","Environment","Technology","Dreams","Data","War","Myth","Machines","Body","Space","Urban","Nature","Speculation"]
+title:"Rank Your Top 3 Themes",
+options:["Future","Past","Identity","Environment","Technology","Dreams","Data","War","Myth","Machines","Body","Space","Urban","Nature","Speculation"]
 }
 ];
 
-/* BUILD UI */
+/* BUILD QUESTIONS */
 function buildQuestions(){
 const container=document.getElementById("questions");
 
 questionsData.forEach((q,index)=>{
 const section=document.createElement("div");
-section.innerHTML=`
-<h2>${q.title}</h2>
-<p>Select 3 options and assign each a unique rank (1 = highest).</p>
-`;
+section.className="section";
+section.innerHTML=`<h3>${q.title}</h3>
+<p>Select 3 options and assign unique ranks.</p>`;
 
 const grid=document.createElement("div");
 grid.className="checkbox-grid";
@@ -84,17 +159,15 @@ const select=cb.parentElement.querySelector("select");
 
 cb.addEventListener("change",()=>{
 select.disabled=!cb.checked;
-if(!cb.checked){ select.value=""; }
-enforceUniqueRanks(index);
+if(!cb.checked){select.value="";}
+enforceUnique(index);
 });
 
-select.addEventListener("change",()=>{
-enforceUniqueRanks(index);
-});
+select.addEventListener("change",()=>enforceUnique(index));
 });
 }
 
-function enforceUniqueRanks(index){
+function enforceUnique(index){
 const selects=document.querySelectorAll(`select[name="rank${index}"]`);
 let used=[];
 selects.forEach(s=>{
@@ -102,7 +175,7 @@ if(s.value){
 if(used.includes(s.value)){
 alert("Each rank can only be used once.");
 s.value="";
-} else {
+}else{
 used.push(s.value);
 }
 }
@@ -112,7 +185,7 @@ used.push(s.value);
 /* SUBMIT */
 async function submitAnswers(){
 const name=document.getElementById("avatarName").value.trim();
-if(!name){ alert("Enter avatar name."); return; }
+if(!name){alert("Enter avatar name.");return;}
 
 let answers=[];
 let valid=true;
@@ -120,190 +193,113 @@ let valid=true;
 questionsData.forEach((q,index)=>{
 const checkboxes=document.querySelectorAll(`input[name="q${index}"]`);
 let ranked=[];
-
 checkboxes.forEach(cb=>{
 const select=cb.parentElement.querySelector("select");
 if(cb.checked && select.value){
-ranked.push({
-option:cb.value,
-rank:parseInt(select.value)
-});
+ranked.push({option:cb.value,rank:parseInt(select.value)});
 }
 });
-
-if(ranked.length!==3){ valid=false; }
+if(ranked.length!==3){valid=false;}
 ranked.sort((a,b)=>a.rank-b.rank);
 answers.push(ranked);
 });
 
 if(!valid){
-alert("Each question must have exactly 3 ranked selections.");
+alert("Each question must have exactly 3 ranked answers.");
 return;
 }
 
-await addDoc(collection(db,"users"),{ name, answers });
-alert("Saved!");
-generateGroups();
+await addDoc(collection(db,"users"),{name,answers});
+displayPersonal(name,answers);
+loadAllUsers();
 }
 
-/* GROUPING */
-async function generateGroups(){
+/* DISPLAY PERSONAL */
+function displayPersonal(name,answers){
+const div=document.getElementById("personalOutput");
+div.innerHTML=`
+<div class="user-box">
+<strong>${name}</strong><br>
+${answers.map((a,i)=>
+`Q${i+1}: ${a.map(x=>`#${x.rank} ${x.option}`).join(", ")}`
+).join("<br>")}
+</div>`;
+}
+
+/* LOAD ALL USERS */
+async function loadAllUsers(){
 const snapshot=await getDocs(collection(db,"users"));
 let users=[];
 snapshot.forEach(doc=>users.push(doc.data()));
 
-const groups=[];
-const used=new Set();
-
-for(let i=0;i<users.length;i++){
-if(used.has(i)) continue;
-let group=[users[i]];
-used.add(i);
-
-for(let j=i+1;j<users.length && group.length<4;j++){
-if(used.has(j)) continue;
-if(weightedMatch(users[i],users[j])>=4){
-group.push(users[j]);
-used.add(j);
-}
-}
-groups.push(group);
+displayAllUsers(users);
+generateGroups(users);
 }
 
-displayGroups(groups);
-}
-
-function weightedMatch(u1,u2){
-let score=0;
-for(let i=0;i<u1.answers.length;i++){
-u1.answers[i].forEach(a=>{
-u2.answers[i].forEach(b=>{
-if(a.option===b.option){
-score+= (4-Math.abs(a.rank-b.rank));
-}
-});
+function displayAllUsers(users){
+const container=document.getElementById("allUsers");
+container.innerHTML="";
+users.forEach(u=>{
+container.innerHTML+=`
+<div class="user-box">
+<strong>${u.name}</strong><br>
+${u.answers.map((a,i)=>
+`Q${i+1}: ${a.map(x=>`#${x.rank} ${x.option}`).join(", ")}`
+).join("<br>")}
+</div>`;
 });
 }
-return score;
+
+/* GROUPING (Balanced 3–4) */
+function generateGroups(users){
+const container=document.getElementById("groupOutput");
+container.innerHTML="";
+if(users.length<3){
+container.innerHTML="Not enough users yet.";
+return;
+}
+
+let groups=[];
+let size=3;
+for(let i=0;i<users.length;i+=size){
+groups.push(users.slice(i,i+size));
+}
+
+groups.forEach((g,i)=>{
+let common=findCommon(g);
+container.innerHTML+=`
+<div class="group-box">
+<h3>Group ${i+1}</h3>
+<strong>Members:</strong> ${g.map(u=>u.name).join(", ")}<br><br>
+${common}
+</div>`;
+});
 }
 
 /* COMMON ANSWERS */
 function findCommon(group){
-let common=[];
-
+let html="";
 for(let q=0;q<questionsData.length;q++){
 let counts={};
-
 group.forEach(user=>{
 user.answers[q].forEach(a=>{
 counts[a.option]=(counts[a.option]||0)+1;
 });
 });
-
 let shared=Object.entries(counts)
 .filter(([opt,count])=>count>1)
 .map(([opt])=>opt);
 
-common.push(shared);
+html+=`<strong>Common in Q${q+1}:</strong> ${shared.length?shared.join(", "):"None"}<br>`;
 }
-
-return common;
-}
-
-/* DISPLAY */
-function displayGroups(groups){
-const output=document.getElementById("groupOutput");
-output.innerHTML="";
-
-groups.forEach((g,i)=>{
-const div=document.createElement("div");
-div.className="group-box";
-
-const names=g.map(u=>u.name).join(", ");
-const common=findCommon(g);
-
-let commonHTML="";
-common.forEach((c,index)=>{
-commonHTML+=`<strong>Common in Q${index+1}:</strong> ${c.length?c.join(", "):"None"}<br>`;
-});
-
-div.innerHTML=`
-<h3>Group ${i+1}</h3>
-<strong>Members:</strong> ${names}<br><br>
-${commonHTML}
-`;
-
-output.appendChild(div);
-});
+return html;
 }
 
 buildQuestions();
-generateGroups();
-
+loadAllUsers();
 window.submitAnswers=submitAnswers;
+
 </script>
-
-<style>
-body{
-font-family:Arial, sans-serif;
-background:#f2f4f8;
-padding:20px;
-}
-.container{
-max-width:900px;
-margin:auto;
-background:white;
-padding:25px;
-border-radius:10px;
-box-shadow:0 5px 20px rgba(0,0,0,.1);
-}
-.checkbox-grid{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
-gap:6px;
-}
-.option-row{
-display:flex;
-align-items:center;
-gap:8px;
-font-size:14px;
-}
-button{
-margin-top:20px;
-padding:10px 20px;
-border:none;
-border-radius:6px;
-background:#2a6df4;
-color:white;
-cursor:pointer;
-}
-.group-box{
-background:#eef2ff;
-padding:15px;
-margin:15px 0;
-border-radius:8px;
-}
-</style>
-</head>
-<body>
-
-<div class="container">
-
-<h1>Ranked Preference Group Matcher</h1>
-
-<label><strong>Avatar Name:</strong></label><br>
-<input type="text" id="avatarName" style="width:100%;padding:8px;"><br>
-
-<div id="questions"></div>
-
-<button onclick="submitAnswers()">Submit</button>
-
-<hr>
-
-<h2>Generated Groups</h2>
-<div id="groupOutput"></div>
-
-</div>
 
 </body>
 </html>
