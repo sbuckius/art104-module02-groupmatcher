@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Ranked Group Matcher (Live)</title>
+<title>Ranked Group Matcher (Live & Weighted)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <!-- Export Libraries -->
@@ -69,7 +69,7 @@ body{
 
 <div class="container">
 
-<h1>Ranked Preference Matcher (Live)</h1>
+<h1>Ranked Preference Matcher (Live & Weighted)</h1>
 
 <label><strong>Avatar Name:</strong></label><br>
 <input type="text" id="avatarName" style="width:100%;padding:8px;"><br>
@@ -104,14 +104,12 @@ body{
 
 </div>
 
-<!-- Firebase -->
 <script type="module">
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } 
+import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, getDocs } 
 from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* 🔥 REPLACE WITH YOUR FIRESTORE CONFIG */
+/* 🔥 Replace with your Firestore config */
 const firebaseConfig = {
   apiKey: "AIzaSyDG_zmeJfITZ1EFyLk3iOb74pqU8VadQQs",
   authDomain: "art104module02groupsetup.firebaseapp.com",
@@ -125,25 +123,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const ADMIN_PASSWORD = "admin123";
 
-const ADMIN_PASSWORD = "admin123";  // Change this
-
+/* Questions array with default weights (adjust later if needed) */
 const questions = [
-{
-title:"Rank Top 3 Interests",
-options:["Art","Music","Coding","Robotics","Design","Gaming","AI","Writing","Science","History","Math","Nature"]
-},
-{
-title:"Rank Top 3 Work Styles",
-options:["Collaborative","Independent","Experimental","Structured","Leadership","Support","Fast","Slow","Analytical"]
-},
-{
-title:"Rank Top 3 Themes",
-options:["Future","Past","Identity","Environment","Technology","Dreams","Data","Myth","Machines","Space"]
-}
+  { title:"Rank Top 3 Interests", options:["Art","Music","Coding","Robotics","Design","Gaming","AI","Writing","Science","History","Math","Nature"], weight:25 },
+  { title:"Rank Top 3 Work Styles", options:["Collaborative","Independent","Experimental","Structured","Leadership","Support","Fast","Slow","Analytical"], weight:25 },
+  { title:"Rank Top 3 Themes", options:["Future","Past","Identity","Environment","Technology","Dreams","Data","Myth","Machines","Space"], weight:25 },
+  { title:"Rank Top 3 Goals (Group by Differences)", options:["Art Project","Teamwork","Learning Coding","Experimenting","Leadership","Design","AI Work","Nature Project"], weight:25 }
 ];
 
-/* BUILD QUESTIONS UI */
+/* Build Questions UI */
 function buildUI(){
     const container = document.getElementById("questions");
     questions.forEach((q,index)=>{
@@ -174,7 +164,7 @@ ${opt}
     });
 }
 
-/* ENABLE RANKING LOGIC */
+/* Enable Ranking Logic */
 function setupRanking(index){
     const checks=document.querySelectorAll(`input[name="q${index}"]`);
     checks.forEach(cb=>{
@@ -201,7 +191,7 @@ function enforceUnique(index){
     });
 }
 
-/* SUBMIT ANSWERS */
+/* Submit Answers */
 async function submitAnswers(){
     const name = document.getElementById("avatarName").value.trim();
     if(!name){alert("Enter avatar name");return;}
@@ -236,7 +226,7 @@ async function submitAnswers(){
     }
 }
 
-/* LIVE LISTENER FOR USERS */
+/* Live Snapshot Listener */
 const usersCollection = collection(db,"users");
 onSnapshot(usersCollection,(snapshot)=>{
     let users=[];
@@ -246,7 +236,7 @@ onSnapshot(usersCollection,(snapshot)=>{
     displayGroups(users);
 });
 
-/* DISPLAY SUBMISSIONS PANEL */
+/* Display Submitted Avatars */
 function displaySubmissionStatus(users){
     const div = document.getElementById("submissionStatus");
     div.innerHTML = "";
@@ -262,7 +252,7 @@ function displaySubmissionStatus(users){
     }
 }
 
-/* DISPLAY ALL PARTICIPANTS */
+/* Display All Participants */
 function displayUsers(users){
     const div = document.getElementById("allUsers");
     div.innerHTML="";
@@ -275,14 +265,16 @@ ${u.answers.map((a,i)=>`Q${i+1}: ${a.map(x=>"#"+x.rank+" "+x.option).join(", ")}
     });
 }
 
-/* DISPLAY GROUPS */
+/* Display Groups */
 function displayGroups(users){
     const div = document.getElementById("groupOutput");
     div.innerHTML="";
     if(users.length<3){div.innerHTML="Not enough users."; return;}
-    for(let i=0;i<users.length;i+=3){
-        let group=users.slice(i,i+3);
-        let commonHTML="";
+
+    const groupSize = 3;
+    for(let i=0;i<users.length;i+=groupSize){
+        let group=users.slice(i,i+groupSize);
+        let html="";
         for(let q=0;q<questions.length;q++){
             let counts={};
             group.forEach(u=>{
@@ -290,21 +282,25 @@ function displayGroups(users){
                     counts[a.option]=(counts[a.option]||0)+1;
                 });
             });
-            let common=Object.entries(counts)
-                .filter(([k,v])=>v>1)
-                .map(([k])=>k);
-            commonHTML+=`Common Q${q+1}: ${common.length?common.join(", "):"None"}<br>`;
+            let result;
+            if(q<3){
+                result = Object.entries(counts).filter(([k,v])=>v>1).map(([k])=>k);
+                html+=`Common Q${q+1}: ${result.length?result.join(", "):"None"}<br>`;
+            } else {
+                result = Object.entries(counts).filter(([k,v])=>v===1).map(([k])=>k);
+                html+=`Unique Q${q+1}: ${result.length?result.join(", "):"All same"}<br>`;
+            }
         }
         div.innerHTML+=`
 <div class="box">
-<strong>Group ${Math.floor(i/3)+1}</strong><br>
+<strong>Group ${Math.floor(i/groupSize)+1}</strong><br>
 Members: ${group.map(u=>u.name).join(", ")}<br><br>
-${commonHTML}
+${html}
 </div>`;
     }
 }
 
-/* EXPORT */
+/* Export */
 window.exportPNG = function(){
     html2canvas(document.body).then(canvas=>{
         const link=document.createElement("a");
@@ -322,17 +318,18 @@ window.exportPDF = async function(){
     pdf.save("results.pdf");
 };
 
-/* ADMIN RESET */
+/* Admin Reset */
 window.adminReset = async function(){
     const pass = document.getElementById("adminPass").value;
     if(pass!==ADMIN_PASSWORD){ alert("Incorrect password."); return; }
     const snapshot = await getDocs(collection(db,"users"));
-    snapshot.forEach(async d=>{ await deleteDoc(doc(db,"users",d.id)); });
+    for(const d of snapshot.docs){
+        await deleteDoc(doc(db,"users",d.id));
+    }
     alert("All data reset.");
 };
 
 buildUI();
-
 </script>
 </body>
 </html>
