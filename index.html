@@ -139,7 +139,7 @@ async function submitAnswers(){
   const name = document.getElementById("avatarName").value.trim();
   if(!name){ alert("Enter avatar name"); return; }
 
-  let answers=[];
+  let allAnswers=[];
   let valid=true;
   questions.forEach((q,index)=>{
     let ranked=[];
@@ -151,23 +151,23 @@ async function submitAnswers(){
     });
     if(ranked.length!==3) valid=false;
     ranked.sort((a,b)=>a.rank-b.rank);
-    answers.push(ranked);
+    
+    // Store as flat structure with question index
+    ranked.forEach(item => {
+      allAnswers.push({
+        questionIndex: index,
+        option: item.option,
+        rank: item.rank
+      });
+    });
   });
 
   if(!valid){ alert("Each question needs 3 ranked choices."); return; }
 
-  // Convert to plain objects for Firestore
-  const cleanAnswers = answers.map(questionRanks => 
-    questionRanks.map(item => ({
-      option: String(item.option),
-      rank: Number(item.rank)
-    }))
-  );
-
   try{
     await addDoc(collection(db,"users"), { 
-      name: String(name), 
-      answers: cleanAnswers
+      name: name, 
+      answers: allAnswers
     });
     alert("Submission successful!");
     document.getElementById("avatarName").value="";
@@ -176,7 +176,7 @@ async function submitAnswers(){
       sel.value="";
       sel.disabled=true;
     });
-  } catch(err){ console.error(err); alert("Error submitting. Check Firestore rules."); }
+  } catch(err){ console.error(err); alert("Error submitting: " + err.message); }
 }
 
 // Live Snapshot
@@ -204,7 +204,12 @@ function displayUsers(users){
   const div=document.getElementById("allUsers");
   div.innerHTML="";
   users.forEach(u=>{
-    div.innerHTML+=`<div class="box"><strong>${u.name}</strong><br>${u.answers.map((a,i)=>`Q${i+1}: ${a.map(x=>"#"+x.rank+" "+x.option).join(", ")}`).join("<br>")}</div>`;
+    // Reconstruct nested structure from flat answers
+    const answersByQuestion = [];
+    for(let i=0; i<questions.length; i++){
+      answersByQuestion[i] = u.answers.filter(a => a.questionIndex === i);
+    }
+    div.innerHTML+=`<div class="box"><strong>${u.name}</strong><br>${answersByQuestion.map((a,i)=>`Q${i+1}: ${a.map(x=>"#"+x.rank+" "+x.option).join(", ")}`).join("<br>")}</div>`;
   });
 }
 
@@ -219,7 +224,10 @@ function displayGroups(users){
     let html="";
     for(let q=0;q<questions.length;q++){
       let counts={};
-      group.forEach(u=>{ u.answers[q].forEach(a=>{ counts[a.option]=(counts[a.option]||0)+1; }); });
+      group.forEach(u=>{ 
+        const qAnswers = u.answers.filter(a => a.questionIndex === q);
+        qAnswers.forEach(a=>{ counts[a.option]=(counts[a.option]||0)+1; }); 
+      });
       let result;
       if(q<3){ result = Object.entries(counts).filter(([k,v])=>v>1).map(([k])=>k); html+=`Common Q${q+1}: ${result.length?result.join(", "):"None"}<br>`; }
       else { result = Object.entries(counts).filter(([k,v])=>v===1).map(([k])=>k); html+=`Unique Q${q+1}: ${result.length?result.join(", "):"All same"}<br>`; }
