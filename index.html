@@ -40,7 +40,7 @@ body{
   margin:12px 0;
   border-radius:8px;
 }
-button{
+.button{
   margin-top:15px;
   padding:8px 16px;
   border:none;
@@ -54,6 +54,14 @@ button{
   padding:15px;
   background:#fee2e2;
   border-radius:8px;
+}
+#submissionStatus span{
+  display:inline-block;
+  padding:6px 12px;
+  margin:4px;
+  background:#dbeafe;
+  border-radius:20px;
+  font-size:14px;
 }
 </style>
 </head>
@@ -69,6 +77,11 @@ button{
 <div id="questions"></div>
 
 <button onclick="submitAnswers()">Submit</button>
+
+<hr>
+
+<h2>Submitted Avatars</h2>
+<div id="submissionStatus"></div>
 
 <hr>
 
@@ -130,6 +143,7 @@ options:["Future","Past","Identity","Environment","Technology","Dreams","Data","
 }
 ];
 
+/* BUILD UI */
 function buildUI(){
 const container=document.getElementById("questions");
 
@@ -161,6 +175,7 @@ setupRanking(index);
 });
 }
 
+/* RANKING LOGIC */
 function setupRanking(index){
 const checks=document.querySelectorAll(`input[name="q${index}"]`);
 checks.forEach(cb=>{
@@ -187,6 +202,7 @@ s.value="";
 });
 }
 
+/* SUBMIT */
 async function submitAnswers(){
 const name=document.getElementById("avatarName").value.trim();
 if(!name){alert("Enter name");return;}
@@ -216,6 +232,7 @@ await addDoc(collection(db,"users"),{name,answers});
 loadUsers();
 }
 
+/* LOAD USERS */
 async function loadUsers(){
 const snapshot=await getDocs(collection(db,"users"));
 let users=[];
@@ -223,10 +240,31 @@ snapshot.forEach(doc=>{
 users.push({id:doc.id,...doc.data()});
 });
 
+displaySubmissionStatus(users);
 displayUsers(users);
 displayGroups(users);
 }
 
+/* DISPLAY SUBMISSIONS */
+function displaySubmissionStatus(users){
+const div=document.getElementById("submissionStatus");
+div.innerHTML="";
+
+const maxUsers = 24;
+const count = users.length;
+
+div.innerHTML += `<div style="margin-bottom:10px;font-weight:bold;">${count} / ${maxUsers} submitted</div>`;
+
+users.forEach(u=>{
+div.innerHTML += `<span>${u.name}</span>`;
+});
+
+if(count >= maxUsers){
+div.innerHTML += `<div style="margin-top:10px;color:green;font-weight:bold;">All submissions complete.</div>`;
+}
+}
+
+/* DISPLAY USERS */
 function displayUsers(users){
 const div=document.getElementById("allUsers");
 div.innerHTML="";
@@ -241,6 +279,7 @@ ${u.answers.map((a,i)=>
 });
 }
 
+/* DISPLAY GROUPS */
 function displayGroups(users){
 const div=document.getElementById("groupOutput");
 div.innerHTML="";
